@@ -57,8 +57,7 @@ paths:
           schema:
             type: integer
         - name: per_page
-          description: The number of items to return per page. Defaults to 10. Maximum
-          is 100.
+          description: The number of items to return per page. Defaults to 10. Maximum is 100.
           required: false
           in: query
           schema:
@@ -84,8 +83,7 @@ paths:
         schema:
           type: integer
       - name: per_page
-        description: The number of items to return per page. Defaults to 10. Maximum
-        is 100.
+        description: The number of items to return per page. Defaults to 10. Maximum is 100.
         required: false
         in: query
         schema:
