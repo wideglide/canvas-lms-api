@@ -50,19 +50,19 @@ paths:
           required: true
           schema:
             type: integer
-      - name: page
-        description: The page number to return. Defaults to 1.
-        required: false
-        in: query
-        schema:
-          type: integer
-      - name: per_page
-        description: The number of items to return per page. Defaults to 10. Maximum
+        - name: page
+          description: The page number to return. Defaults to 1.
+          required: false
+          in: query
+          schema:
+            type: integer
+        - name: per_page
+          description: The number of items to return per page. Defaults to 10. Maximum
           is 100.
-        required: false
-        in: query
-        schema:
-          type: integer
+          required: false
+          in: query
+          schema:
+            type: integer
       responses:
         '200':
           description: Course users
@@ -85,14 +85,14 @@ paths:
           type: integer
       - name: per_page
         description: The number of items to return per page. Defaults to 10. Maximum
-          is 100.
+        is 100.
         required: false
         in: query
         schema:
           type: integer
-      responses:
-        '200':
-          description: Course assignments
+        responses:
+          '200':
+            description: Course assignments
 
   /api/v1/courses/{course_id}/assignments/{assignment_id}/submissions:
     get:
@@ -163,17 +163,17 @@ paths:
           description: Announcement created
 
   /api/v1/courses/{course_id}/discussion_topics:
-      post:
-        operationId: createAnnouncement
-        summary: Create Course Announcement
-        parameters:
-          - name: course_id
-            in: path
-            required: true
-            schema:
-              type: integer
-        requestBody:
+    post:
+      operationId: createAnnouncement
+      summary: Create Course Announcement
+      parameters:
+        - name: course_id
+          in: path
           required: true
+          schema:
+            type: integer
+          requestBody:
+            required: true
           content:
             application/json:
               schema:
@@ -192,9 +192,9 @@ paths:
                     type: boolean
                     default: true
                     description: Creates the discussion topic as a course announcement
-        responses:
-          '200':
-            description: Announcement created
+          responses:
+            '200':
+              description: Announcement created
 
           '201':
             description: Announcement created
