@@ -1,10 +1,19 @@
+---
 openapi: 3.0.0
 info:
   title: Canvas Instructor API
   version: 1.0.0
   description: Canvas LMS endpoints optimized for APIM MCP
+  contact:
+    name: Instructure Canvas API
+    url: https://www.instructure.com/canvas
 servers:
-  - url: https://westpoint.beta.instructure.com
+- url: https://{instance}.instructure.com
+  description: Canvas LMS Instance
+  variables:
+    instance:
+      default: canvas
+      description: Your Canvas instance subdomain
 paths:
   /api/v1/users/self:
     get:
@@ -13,17 +22,54 @@ paths:
       responses:
         '200':
           description: Current user information
+      description: Returns current user information
   /api/v1/courses:
     get:
+      tags:
+      - Courses
       operationId: listCourses
-      summary: List My Courses
+      parameters:
+      - name: enrollment_state
+        description: |-
+          When set, only return courses where the user has an enrollment with the given state.
+          This will respect section/course/term date overrides.
+        required: false
+        in: query
+        schema:
+          type: string
+          enum:
+          - active
+          - invited_or_pending
+          - completed
+      - name: page
+        description: The page number to return. Defaults to 1.
+        required: false
+        in: query
+        schema:
+          type: integer
+      - name: per_page
+        description: The number of items to return per page. Defaults to 10. Maximum
+          is 100.
+        required: false
+        in: query
+        schema:
+          type: integer
       responses:
         '200':
-          description: Courses returned
+          description: course list
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Course"
+      description: Returns the paginated list of active courses for the current user.
+      summary: List your courses
+      x-controller: courses
+      x-action: index
   /api/v1/courses/{course_id}:
     get:
+      tags:
+      - Courses
       operationId: getCourse
-      summary: Get Course Details
       parameters:
         - name: course_id
           in: path
@@ -33,6 +79,17 @@ paths:
       responses:
         '200':
           description: Course details
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Course"
+      description: |-
+        Return information on a single course.
+
+        Accepts the same include[] parameters as the list action plus:
+      summary: Get a single course
+      x-controller: courses
+      x-action: show
   /api/v1/courses/{course_id}/users:
     get:
       operationId: listCourseUsers
@@ -57,7 +114,17 @@ paths:
             type: integer
       responses:
         '200':
-          description: Course users
+          description: list of course users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/User"
+      description: Returns the paginated list of users in this course. And optionally
+        the user's enrollments in the course.
+      x-controller: courses
+      x-action: users
   /api/v1/courses/{course_id}/assignments:
     get:
       operationId: listAssignments
@@ -83,26 +150,49 @@ paths:
       responses:
         '200':
           description: Course assignments
+          content:
+            application/json:
+              schema:
+                type: object
   /api/v1/courses/{course_id}/assignments/{assignment_id}/submissions:
     get:
       operationId: getAssignmentGrades
-      summary: Get Assignment Grades
+      tags:
+      - SubmissionsApi
       parameters:
-        - name: course_id
-          in: path
-          required: true
-          schema:
-            type: integer
-        - name: assignment_id
-          in: path
-          required: true
-          schema:
-            type: integer
+      - name: course_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: assignment_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: page
+        description: The page number to return. Defaults to 1.
+        required: false
+        in: query
+        schema:
+          type: integer
+      - name: per_page
+        description: The number of items to return per page. Defaults to 10. Maximum is 100.
+        required: false
+        in: query
+        schema:
+          type: integer
       responses:
         '200':
           description: Student grades
+      description: A paginated list of all existing submissions for an assignment.
+      summary: List assignment submissions
+      x-controller: submissions_api
+      x-action: index
   /api/v1/courses/{course_id}/enrollments:
     get:
+      tags:
+      - EnrollmentsApi
       operationId: getCourseGrades
       summary: Get Overall Course Grades
       parameters:
@@ -111,42 +201,72 @@ paths:
           required: true
           schema:
             type: integer
-      responses:
-        '200':
-          description: Enrollment and grade information
-  /api/v1/courses/{course_id}/discussion_topics:
-    get:
-      operationId: listDiscussions
-      summary: List Discussions
-      parameters:
-        - name: course_id
-          in: path
-          required: true
+        - name: page
+          description: The page number to return. Defaults to 1.
+          required: false
+          in: query
+          schema:
+            type: integer
+        - name: per_page
+          description: The number of items to return per page. Defaults to 10. Maximum
+            is 100.
+          required: false
+          in: query
           schema:
             type: integer
       responses:
         '200':
-          description: Discussion topics
+          description: Enrollment and grade information
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/Enrollment"
+      description: |-
+        Depending on the URL given, return a paginated list of either (1) all of
+        the enrollments in a course, (2) all of the enrollments in a section or (3)
+        all of a user's enrollments. This includes student, teacher, TA, and
+        observer enrollments.
+
+        If a user has multiple enrollments in a context (e.g. as a teacher
+        and a student or in multiple course sections), each enrollment will be
+        listed separately.
+
+        note: Currently, only a root level admin user can return other users' enrollments.
+        A user can, however, return his/her own enrollments.
+
+        Enrollments scoped to a course context will include inactive states by default
+        if the caller has account admin authorization and the state[] parameter is omitted.
   /api/v1/announcements:
-    post:
+    get:
+      tags:
+      - AnnouncementsApi
       operationId: getAnnouncements
-      summary: Get Course Announcement
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                title:
-                  type: string
-                message:
-                  type: string
-                context_code:
-                  type: string
+      summary: List announcements
+      parameters:
+        - name: page
+          description: The page number to return. Defaults to 1.
+          required: false
+          in: query
+          schema:
+            type: integer
+        - name: per_page
+          description: The number of items to return per page. Defaults to 10. Maximum
+            is 100.
+          required: false
+          in: query
+          schema:
+            type: integer
       responses:
-        '201':
-          description: Announcement created
+        '200':
+          description: list of announcements
+      description: |-
+        Returns the paginated list of announcements for the given courses and date range.  Note that
+        a +context_code+ field is added to the responses so you can tell which course each announcement
+        belongs to.
+      x-controller: announcements_api
+      x-action: index
   /api/v1/courses/{course_id}/analytics/activity:
     get:
       operationId: courseActivityAnalytics
@@ -160,7 +280,974 @@ paths:
       responses:
         '200':
           description: Course analytics
+  /api/v1/courses/{course_id}/discussion_topics:
+    get:
+      tags:
+      - DiscussionTopics
+      operationId: DiscussionTopics-index_other
+      parameters:
+      - name: course_id
+        description: Scope response to course_id
+        required: true
+        in: path
+        schema:
+          type: string
+      - name: include
+        description: |-
+          If "all_dates" is passed, all dates associated with graded discussions'
+          assignments will be included.
+          if "sections" is passed, includes the course sections that are associated
+          with the topic, if the topic is specific to certain sections of the course.
+          If "sections_user_count" is passed, then:
+            (a) If sections were asked for *and* the topic is specific to certain
+                course sections, includes the number of users in each
+                section. (as part of the section json asked for above)
+            (b) Else, includes at the root level the total number of users in the
+                topic's context (group or course) that the topic applies to.
+          If "overrides" is passed, the overrides for the assignment will be included
+        required: false
+        in: query
+        schema:
+          type: array
+          items:
+            type: string
+            enum:
+            - all_dates
+            - sections
+            - sections_user_count
+            - overrides
+        explode: true
+      - name: order_by
+        description: Determines the order of the discussion topic list. Defaults to
+          "position".
+        required: false
+        in: query
+        schema:
+          type: string
+          enum:
+          - position
+          - recent_activity
+          - title
+      - name: scope
+        description: |-
+          Only return discussion topics in the given state(s). Defaults to including
+          all topics. Filtering is done after pagination, so pages
+          may be smaller than requested if topics are filtered.
+          Can pass multiple states as comma separated string.
+        required: false
+        in: query
+        schema:
+          type: string
+          enum:
+          - locked
+          - unlocked
+          - pinned
+          - unpinned
+      - name: only_announcements
+        description: Return announcements instead of discussion topics. Defaults to
+          false
+        required: false
+        in: query
+        schema:
+          type: boolean
+      - name: filter_by
+        description: The state of the discussion topic to return. Currently only supports
+          unread state.
+        required: false
+        in: query
+        schema:
+          type: string
+          enum:
+          - all
+          - unread
+      - name: search_term
+        description: The partial title of the discussion topics to match and return.
+        required: false
+        in: query
+        schema:
+          type: string
+      - name: exclude_context_module_locked_topics
+        description: |-
+          For students, exclude topics that are locked by module progression.
+          Defaults to false.
+        required: false
+        in: query
+        schema:
+          type: boolean
+      - name: page
+        description: The page number to return. Defaults to 1.
+        required: false
+        in: query
+        schema:
+          type: integer
+      - name: per_page
+        description: The number of items to return per page. Defaults to 10. Maximum
+          is 100.
+        required: false
+        in: query
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: discussion topics
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+      description: Returns the paginated list of discussion topics for this course or group.
+      summary: List discussion topics
+      x-controller: discussion_topics
+      x-action: index
+    post:
+      tags:
+      - DiscussionTopics
+      operationId: DiscussionTopics-create_other
+      parameters:
+      - name: course_id
+        description: Scope response to course_id
+        required: true
+        in: path
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Create a new discussion topic
+      description: Create an new discussion topic for the course or group.
+      summary: Create a new discussion topic
+      x-controller: discussion_topics
+      x-action: create
+      requestBody:
+        description: Request body parameters
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  description: ''
+                message:
+                  type: string
+                  description: ''
+                discussion_type:
+                  type: string
+                  enum:
+                  - side_comment
+                  - threaded
+                  - not_threaded
+                  description: The type of discussion. Defaults to side_comment or
+                    not_threaded if not value is given. Accepted values are 'side_comment',
+                    'not_threaded' for discussions that only allow one level of nested
+                    comments, and 'threaded' for fully threaded discussions.
+                published:
+                  type: boolean
+                  description: |-
+                    Whether this topic is published (true) or draft state (false). Only
+                    teachers and TAs have the ability to create draft state topics.
+                delayed_post_at:
+                  type: string
+                  description: If a timestamp is given, the topic will not be published
+                    until that time.
+                allow_rating:
+                  type: boolean
+                  description: Whether or not users can rate entries in this topic.
+                lock_at:
+                  type: string
+                  description: |-
+                    If a timestamp is given, the topic will be scheduled to lock at the
+                    provided timestamp. If the timestamp is in the past, the topic will be
+                    locked.
+                podcast_enabled:
+                  type: boolean
+                  description: If true, the topic will have an associated podcast
+                    feed.
+                podcast_has_student_posts:
+                  type: boolean
+                  description: |-
+                    If true, the podcast will include posts from students as well. Implies
+                    podcast_enabled.
+                require_initial_post:
+                  type: boolean
+                  description: |-
+                    If true then a user may not respond to other replies until that user has
+                    made an initial reply. Defaults to false.
+                is_announcement:
+                  type: boolean
+                  description: |-
+                    If true, this topic is an announcement. It will appear in the
+                    announcement's section rather than the discussions section. This requires
+                    announcment-posting permissions.
+                pinned:
+                  type: boolean
+                  description: If true, this topic will be listed in the "Pinned Discussion"
+                    section
+                position_after:
+                  type: string
+                  description: |-
+                    By default, discussions are sorted chronologically by creation date, you
+                    can pass the id of another topic to have this one show up after the other
+                    when they are listed.
+                group_category_id:
+                  type: integer
+                  description: |-
+                    If present, the topic will become a group discussion assigned
+                    to the group.
+                only_graders_can_rate:
+                  type: boolean
+                  description: If true, only graders will be allowed to rate entries.
+                sort_order:
+                  type: string
+                  enum:
+                  - asc
+                  - desc
+                  description: Default sort order of the discussion. Accepted values
+                    are "asc", "desc".
+                sort_order_locked:
+                  type: boolean
+                  description: If true, users cannot choose their prefered sort order
+                expanded:
+                  type: boolean
+                  description: If true, thread will be expanded by default
+                expanded_locked:
+                  type: boolean
+                  description: If true, users cannot choose their prefered thread
+                    expansion setting
+                sort_by_rating:
+                  type: boolean
+                  description: "(DEPRECATED) If true, entries will be sorted by rating."
+                specific_sections:
+                  type: string
+                  description: |-
+                    A comma-separated list of sections ids to which the discussion topic
+                    should be made specific to.  If it is not desired to make the discussion
+                    topic specific to sections, then this parameter may be omitted or set to
+                    "all".  Can only be present only on announcements and only those that are
+                    for a course (as opposed to a group).
+                lock_comment:
+                  type: boolean
+                  description: If is_announcement and lock_comment are true, ‘Allow
+                    Participants to Comment’ setting is disabled.
+                assignment:
+                  type: object
+                  properties:
+                    Assignment:
+                      type: string
+                      description: |-
+                        To create an assignment discussion, pass the assignment parameters as a
+                        sub-object. See the {api:AssignmentsApiController#create Create an Assignment API}
+                        for the available parameters. The name parameter will be ignored, as it's
+                        taken from the discussion title. If you want to make a discussion that was
+                        an assignment NOT an assignment, pass set_assignment = false as part of
+                        the assignment object
+                attachment:
+                  type: object
+                  properties:
+                    File:
+                      type: string
+                      description: |-
+                        A multipart/form-data form-field-style attachment.
+                        Attachments larger than 1 kilobyte are subject to quota restrictions.
+tags:
+- name: EnrollmentsApi
+  description: API for creating and viewing course enrollments
+- name: DiscussionTopics
+  description: API for accessing and participating in discussion topics in groups and courses.
+- name: AnnouncementsApi
+  description: |-
+    API for retrieving announcements.  This API is Announcement-specific.
+    See also the Discussion Topics API, which operates on Announcements also.
+- name: Courses
+  description: API for accessing course information.
+- name: SubmissionsApi
+  description: '**LTI API for Plagiarism Detection Submissions (Must use <a href="file.jwt_access_tokens.html">JWT
+    access tokens</a> with this API).**'
 components:
+  schemas:
+    Term:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Default Term
+        start_at:
+          type: string
+          format: date-time
+          example: '2012-06-01T00:00:00-06:00'
+        end_at:
+          type: string
+          format: date-time
+      description: ''
+    CourseProgress:
+      type: object
+      properties:
+        requirement_count:
+          type: integer
+          description: total number of requirements from all modules
+          example: 10
+        requirement_completed_count:
+          type: integer
+          description: total number of requirements the user has completed from all
+            modules
+          example: 1
+        next_requirement_url:
+          type: string
+          description: url to next module item that has an unmet requirement. null
+            if the user has completed the course or the current module does not require
+            sequential progress
+          example: http://localhost/courses/1/modules/items/2
+        completed_at:
+          type: string
+          format: date-time
+          description: date the course was completed. null if the course has not been
+            completed by this user
+          example: '2013-06-01T00:00:00-06:00'
+      description: ''
+    Course:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: the unique identifier for the course
+          example: 370663
+        sis_course_id:
+          type: string
+          description: the SIS identifier for the course, if defined. This field is
+            only included if the user has permission to view SIS information.
+        uuid:
+          type: string
+          description: the UUID of the course
+          example: WvAHhY5FINzq5IyRIJybGeiXyFkG3SqHUPb7jZY5
+        integration_id:
+          type: string
+          description: the integration identifier for the course, if defined. This
+            field is only included if the user has permission to view SIS information.
+        sis_import_id:
+          type: integer
+          description: the unique identifier for the SIS import. This field is only
+            included if the user has permission to manage SIS information.
+          example: 34
+        name:
+          type: string
+          description: the full name of the course. If the requesting user has set
+            a nickname for the course, the nickname will be shown here.
+          example: InstructureCon 2012
+        course_code:
+          type: string
+          description: the course code
+          example: INSTCON12
+        original_name:
+          type: string
+          description: the actual course name. This field is returned only if the
+            requesting user has set a nickname for the course.
+          example: InstructureCon-2012-01
+        workflow_state:
+          type: string
+          description: 'the current state of the course, also known as ‘status’.  The
+            value will be one of the following values: ''unpublished'', ''available'',
+            ''completed'', or ''deleted''.  NOTE: When fetching a singular course
+            that has a ''deleted'' workflow state value, an error will be returned
+            with a message of ''The specified resource does not exist.'''
+          example: available
+          enum:
+          - unpublished
+          - available
+          - completed
+          - deleted
+        account_id:
+          type: integer
+          description: the account associated with the course
+          example: 81259
+        root_account_id:
+          type: integer
+          description: the root account associated with the course
+          example: 81259
+        enrollment_term_id:
+          type: integer
+          description: the enrollment term associated with the course
+          example: 34
+        grading_periods:
+          type: array
+          description: A list of grading periods associated with the course
+          items:
+            "$ref": "#/components/schemas/GradingPeriod"
+        grading_standard_id:
+          type: integer
+          description: the grading standard associated with the course
+          example: 25
+        grade_passback_setting:
+          type: string
+          description: the grade_passback_setting set on the course
+          example: nightly_sync
+        created_at:
+          type: string
+          format: date-time
+          description: the date the course was created.
+          example: '2012-05-01T00:00:00-06:00'
+        start_at:
+          type: string
+          format: date-time
+          description: the start date for the course, if applicable
+          example: '2012-06-01T00:00:00-06:00'
+        end_at:
+          type: string
+          format: date-time
+          description: the end date for the course, if applicable
+          example: '2012-09-01T00:00:00-06:00'
+        locale:
+          type: string
+          description: the course-set locale, if applicable
+          example: en
+        enrollments:
+          type: array
+          description: A list of enrollments linking the current user to the course.
+            for student enrollments, grading information may be included if include[]=total_scores
+          items:
+            "$ref": "#/components/schemas/Enrollment"
+        total_students:
+          type: integer
+          description: 'optional: the total number of active and invited students
+            in the course'
+          example: 32
+        calendar:
+          "$ref": "#/components/schemas/CalendarLink"
+        default_view:
+          type: string
+          description: 'the type of page that users will see when they first visit
+            the course - ''feed'': Recent Activity Dashboard - ''wiki'': Wiki Front
+            Page - ''modules'': Course Modules/Sections Page - ''assignments'': Course
+            Assignments List - ''syllabus'': Course Syllabus Page other types may
+            be added in the future'
+          example: feed
+          enum:
+          - feed
+          - wiki
+          - modules
+          - syllabus
+          - assignments
+        syllabus_body:
+          type: string
+          description: 'optional: user-generated HTML for the course syllabus'
+          example: "<p>syllabus html goes here</p>"
+        needs_grading_count:
+          type: integer
+          description: 'optional: the number of submissions needing grading returned
+            only if the current user has grading rights and include[]=needs_grading_count'
+          example: 17
+        term:
+          "$ref": "#/components/schemas/Term"
+        course_progress:
+          "$ref": "#/components/schemas/CourseProgress"
+        apply_assignment_group_weights:
+          type: boolean
+          description: weight final grade based on assignment group percentages
+          example: true
+        permissions:
+          type: object
+          description: 'optional: the permissions the user has for the course. returned
+            only for a single course and include[]=permissions'
+          example:
+            create_discussion_topic: true
+            create_announcement: true
+        is_public:
+          type: boolean
+          example: true
+        is_public_to_auth_users:
+          type: boolean
+          example: true
+        public_syllabus:
+          type: boolean
+          example: true
+        public_syllabus_to_auth:
+          type: boolean
+          example: true
+        public_description:
+          type: string
+          description: 'optional: the public description of the course'
+          example: Come one, come all to InstructureCon 2012!
+        storage_quota_mb:
+          type: integer
+          example: 5
+        storage_quota_used_mb:
+          type: number
+          example: 5
+        hide_final_grades:
+          type: boolean
+        license:
+          type: string
+          example: Creative Commons
+        allow_student_assignment_edits:
+          type: boolean
+        allow_wiki_comments:
+          type: boolean
+        allow_student_forum_attachments:
+          type: boolean
+        open_enrollment:
+          type: boolean
+          example: true
+        self_enrollment:
+          type: boolean
+        restrict_enrollments_to_course_dates:
+          type: boolean
+        course_format:
+          type: string
+          example: online
+        access_restricted_by_date:
+          type: boolean
+          description: 'optional: this will be true if this user is currently prevented
+            from viewing the course because of date restriction settings'
+        time_zone:
+          type: string
+          description: The course's IANA time zone name.
+          example: America/Denver
+        blueprint:
+          type: boolean
+          description: 'optional: whether the course is set as a Blueprint Course
+            (blueprint fields require the Blueprint Courses feature)'
+          example: true
+        blueprint_restrictions:
+          type: object
+          description: 'optional: Set of restrictions applied to all locked course
+            objects'
+          example:
+            content: true
+            points: true
+            due_dates: false
+            availability_dates: false
+        blueprint_restrictions_by_object_type:
+          type: object
+          description: 'optional: Sets of restrictions differentiated by object type
+            applied to locked course objects'
+          example:
+            assignment:
+              content: true
+              points: true
+            wiki_page:
+              content: true
+        template:
+          type: boolean
+          description: 'optional: whether the course is set as a template (requires
+            the Course Templates feature)'
+          example: true
+      description: ''
+    CalendarLink:
+      type: object
+      properties:
+        ics:
+          type: string
+          description: The URL of the calendar in ICS format
+          example: https://canvas.instructure.com/feeds/calendars/course_abcdef.ics
+      description: ''
+    Enrollment:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: The ID of the enrollment.
+          example: 1
+        course_id:
+          type: integer
+          description: The unique id of the course.
+          example: 1
+        sis_course_id:
+          type: string
+          description: The SIS Course ID in which the enrollment is associated. Only
+            displayed if present. This field is only included if the user has permission
+            to view SIS information.
+          example: SHEL93921
+        course_integration_id:
+          type: string
+          description: The Course Integration ID in which the enrollment is associated.
+            This field is only included if the user has permission to view SIS information.
+          example: SHEL93921
+        course_section_id:
+          type: integer
+          description: The unique id of the user's section.
+          example: 1
+        section_integration_id:
+          type: string
+          description: The Section Integration ID in which the enrollment is associated.
+            This field is only included if the user has permission to view SIS information.
+          example: SHEL93921
+        sis_account_id:
+          type: string
+          description: The SIS Account ID in which the enrollment is associated. Only
+            displayed if present. This field is only included if the user has permission
+            to view SIS information.
+          example: SHEL93921
+        sis_section_id:
+          type: string
+          description: The SIS Section ID in which the enrollment is associated. Only
+            displayed if present. This field is only included if the user has permission
+            to view SIS information.
+          example: SHEL93921
+        sis_user_id:
+          type: string
+          description: The SIS User ID in which the enrollment is associated. Only
+            displayed if present. This field is only included if the user has permission
+            to view SIS information.
+          example: SHEL93921
+        enrollment_state:
+          type: string
+          description: The state of the user's enrollment in the course.
+          example: active
+        limit_privileges_to_course_section:
+          type: boolean
+          description: User can only access his or her own course section.
+          example: true
+        sis_import_id:
+          type: integer
+          description: The unique identifier for the SIS import. This field is only
+            included if the user has permission to manage SIS information.
+          example: 83
+        root_account_id:
+          type: integer
+          description: The unique id of the user's account.
+          example: 1
+        type:
+          type: string
+          description: The enrollment type. One of 'StudentEnrollment', 'TeacherEnrollment',
+            'TaEnrollment', 'DesignerEnrollment', 'ObserverEnrollment'.
+          example: StudentEnrollment
+        user_id:
+          type: integer
+          description: The unique id of the user.
+          example: 1
+        associated_user_id:
+          type: integer
+          description: The unique id of the associated user. Will be null unless type
+            is ObserverEnrollment.
+        role:
+          type: string
+          description: The enrollment role, for course-level permissions. This field
+            will match `type` if the enrollment role has not been customized.
+          example: StudentEnrollment
+        role_id:
+          type: integer
+          description: The id of the enrollment role.
+          example: 1
+        created_at:
+          type: string
+          format: date-time
+          description: The created time of the enrollment, in ISO8601 format.
+          example: '2012-04-18T23:08:51Z'
+        updated_at:
+          type: string
+          format: date-time
+          description: The updated time of the enrollment, in ISO8601 format.
+          example: '2012-04-18T23:08:51Z'
+        start_at:
+          type: string
+          format: date-time
+          description: The start time of the enrollment, in ISO8601 format.
+          example: '2012-04-18T23:08:51Z'
+        end_at:
+          type: string
+          format: date-time
+          description: The end time of the enrollment, in ISO8601 format.
+          example: '2012-04-18T23:08:51Z'
+        last_activity_at:
+          type: string
+          format: date-time
+          description: The last activity time of the user for the enrollment, in ISO8601
+            format.
+          example: '2012-04-18T23:08:51Z'
+        last_attended_at:
+          type: string
+          format: date-time
+          description: The last attended date of the user for the enrollment in a
+            course, in ISO8601 format.
+          example: '2012-04-18T23:08:51Z'
+        total_activity_time:
+          type: integer
+          description: The total activity time of the user for the enrollment, in
+            seconds.
+          example: 260
+        html_url:
+          type: string
+          description: The URL to the Canvas web UI page for this course enrollment.
+          example: https://...
+        grades:
+          "$ref": "#/components/schemas/Grade"
+        user:
+          "$ref": "#/components/schemas/User"
+        override_grade:
+          type: string
+          description: The user's override grade for the course.
+          example: A
+        override_score:
+          type: number
+          description: The user's override score for the course.
+          example: 99.99
+        unposted_current_grade:
+          type: string
+          description: The user's current grade in the class including muted/unposted
+            assignments. Only included if user has permissions to view this grade,
+            typically teachers, TAs, and admins.
+          example: ''
+        unposted_final_grade:
+          type: string
+          description: The user's final grade for the class including muted/unposted
+            assignments. Only included if user has permissions to view this grade,
+            typically teachers, TAs, and admins..
+          example: ''
+        unposted_current_score:
+          type: string
+          description: The user's current score in the class including muted/unposted
+            assignments. Only included if user has permissions to view this score,
+            typically teachers, TAs, and admins..
+          example: ''
+        unposted_final_score:
+          type: string
+          description: The user's final score for the class including muted/unposted
+            assignments. Only included if user has permissions to view this score,
+            typically teachers, TAs, and admins..
+          example: ''
+        has_grading_periods:
+          type: boolean
+          description: 'optional: Indicates whether the course the enrollment belongs
+            to has grading periods set up. (applies only to student enrollments, and
+            only available in course endpoints)'
+          example: true
+        totals_for_all_grading_periods_option:
+          type: boolean
+          description: 'optional: Indicates whether the course the enrollment belongs
+            to has the Display Totals for ''All Grading Periods'' feature enabled.
+            (applies only to student enrollments, and only available in course endpoints)'
+          example: true
+        current_grading_period_title:
+          type: string
+          description: 'optional: The name of the currently active grading period,
+            if one exists. If the course the enrollment belongs to does not have grading
+            periods, or if no currently active grading period exists, the value will
+            be null. (applies only to student enrollments, and only available in course
+            endpoints)'
+          example: Fall Grading Period
+        current_grading_period_id:
+          type: integer
+          description: 'optional: The id of the currently active grading period, if
+            one exists. If the course the enrollment belongs to does not have grading
+            periods, or if no currently active grading period exists, the value will
+            be null. (applies only to student enrollments, and only available in course
+            endpoints)'
+          example: 5
+        current_period_override_grade:
+          type: string
+          description: The user's override grade for the current grading period.
+          example: A
+        current_period_override_score:
+          type: number
+          description: The user's override score for the current grading period.
+          example: 99.99
+        current_period_unposted_current_score:
+          type: number
+          description: 'optional: The student''s score in the course for the current
+            grading period, including muted/unposted assignments. Only included if
+            user has permission to view this score, typically teachers, TAs, and admins.
+            If the course the enrollment belongs to does not have grading periods,
+            or if no currently active grading period exists, the value will be null.
+            (applies only to student enrollments, and only available in course endpoints)'
+          example: 95.8
+        current_period_unposted_final_score:
+          type: number
+          description: 'optional: The student''s score in the course for the current
+            grading period, including muted/unposted assignments and including ungraded
+            assignments with a score of 0. Only included if user has permission to
+            view this score, typically teachers, TAs, and admins. If the course the
+            enrollment belongs to does not have grading periods, or if no currently
+            active grading period exists, the value will be null. (applies only to
+            student enrollments, and only available in course endpoints)'
+          example: 85.25
+        current_period_unposted_current_grade:
+          type: string
+          description: 'optional: The letter grade equivalent of current_period_unposted_current_score,
+            if available. Only included if user has permission to view this grade,
+            typically teachers, TAs, and admins. If the course the enrollment belongs
+            to does not have grading periods, or if no currently active grading period
+            exists, the value will be null. (applies only to student enrollments,
+            and only available in course endpoints)'
+          example: A
+        current_period_unposted_final_grade:
+          type: string
+          description: 'optional: The letter grade equivalent of current_period_unposted_final_score,
+            if available. Only included if user has permission to view this grade,
+            typically teachers, TAs, and admins. If the course the enrollment belongs
+            to does not have grading periods, or if no currently active grading period
+            exists, the value will be null. (applies only to student enrollments,
+            and only available in course endpoints)'
+          example: B
+      description: ''
+    Grade:
+      type: object
+      properties:
+        grade:
+          type: number
+          description: The grade for the course
+          example: 120.0
+        total:
+          type: number
+          description: The total points earned in the course
+          example: 24.0
+        possible:
+          type: number
+          description: The total points possible for the course
+          example: 20.0
+        dropped:
+          type: array
+          description: The dropped grades for the course
+          example: []
+          items:
+            type: object
+    GradingPeriod:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: The unique identifier for the grading period.
+          example: 1023
+        title:
+          type: string
+          description: The title for the grading period.
+          example: First Block
+        start_date:
+          type: string
+          description: The start date of the grading period.
+          example: '2014-01-07T15:04:00Z'
+          format: date-time
+        end_date:
+          type: string
+          description: The end date of the grading period.
+          example: '2014-05-07T17:07:00Z'
+          format: date-time
+        close_date:
+          type: string
+          description: Grades can only be changed before the close date of the grading
+            period.
+          example: '2014-06-07T17:07:00Z'
+          format: date-time
+        weight:
+          type: integer
+          description: A weight value that contributes to the overall weight of a
+            grading period set which is used to calculate how much assignments in
+            this period contribute to the total grade
+          example: 33
+        is_closed:
+          type: boolean
+          description: If true, the grading period's close_date has passed.
+          example: true
+      required:
+      - id
+      - start_date
+      - end_date
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: The ID of the user.
+          example: 2
+          format: int64
+        name:
+          type: string
+          description: The name of the user.
+          example: Sheldon Cooper
+        sortable_name:
+          type: string
+          description: The name of the user that is should be used for sorting groups
+            of users, such as in the gradebook.
+          example: Cooper, Sheldon
+        last_name:
+          type: string
+          description: The last name of the user.
+          example: Cooper
+        first_name:
+          type: string
+          description: The first name of the user.
+          example: Sheldon
+        short_name:
+          type: string
+          description: A short name the user has selected, for use in conversations
+            or other less formal places through the site.
+          example: Shelly
+        sis_user_id:
+          type: string
+          description: The SIS ID associated with the user.  This field is only included
+            if the user came from a SIS import and has permissions to view SIS information.
+          example: SHEL93921
+        sis_import_id:
+          type: integer
+          description: The id of the SIS import.  This field is only included if the
+            user came from a SIS import and has permissions to manage SIS information.
+          example: 18
+          format: int64
+        integration_id:
+          type: string
+          description: The integration_id associated with the user.  This field is
+            only included if the user came from a SIS import and has permissions to
+            view SIS information.
+          example: ABC59802
+        login_id:
+          type: string
+          description: The unique login id for the user.  This is what the user uses
+            to log in to Canvas.
+          example: sheldon@caltech.example.com
+        avatar_url:
+          type: string
+          description: If avatars are enabled, this field will be included and contain
+            a url to retrieve the user's avatar.
+          example: https://en.gravatar.com/avatar/d8cb8c8cd40ddf0cd05241443a591868?s=80&r=g
+        avatar_state:
+          type: string
+          description: 'Optional: If avatars are enabled and caller is admin, this
+            field can be requested and will contain the current state of the user''s
+            avatar.'
+          example: approved
+        enrollments:
+          type: array
+          description: 'Optional: This field can be requested with certain API calls,
+            and will return a list of the users active enrollments. See the List enrollments
+            API for more details about the format of these records.'
+          items:
+            "$ref": "#/components/schemas/Enrollment"
+        email:
+          type: string
+          description: 'Optional: This field can be requested with certain API calls,
+            and will return the users primary email address.'
+          example: sheldon@caltech.example.com
+        locale:
+          type: string
+          description: 'Optional: This field can be requested with certain API calls,
+            and will return the users locale in RFC 5646 format.'
+          example: tlh
+        last_login:
+          type: string
+          description: 'Optional: This field is only returned in certain API calls,
+            and will return a timestamp representing the last time the user logged
+            in to canvas.'
+          example: '2012-05-30T17:45:25Z'
+          format: date-time
+        time_zone:
+          type: string
+          description: 'Optional: This field is only returned in certain API calls,
+            and will return the IANA time zone name of the user''s preferred timezone.'
+          example: America/Denver
+        bio:
+          type: string
+          description: 'Optional: The user''s bio.'
+          example: I like the Muppets.
+        pronouns:
+          type: string
+          description: 'Optional: This field is only returned if pronouns are enabled,
+            and will return the pronouns of the user.'
+          example: he/him
+      required:
+      - id
+      description: A Canvas user, e.g. a student, teacher, administrator, observer,
+        etc.
   securitySchemes:
     CanvasToken:
       type: apiKey
