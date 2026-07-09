@@ -129,8 +129,8 @@ paths:
           description: Discussion topics
   /api/v1/announcements:
     post:
-      operationId: createAnnouncement
-      summary: Create Course Announcement
+      operationId: getAnnouncements
+      summary: Get Course Announcement
       requestBody:
         required: true
         content:
