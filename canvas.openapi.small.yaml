@@ -147,41 +147,6 @@ paths:
       responses:
         '201':
           description: Announcement created
-  /api/v1/courses/{course_id}/discussion_topics:
-    post:
-      operationId: createAnnouncement
-      summary: Create Course Announcement
-      parameters:
-        - name: course_id
-          in: path
-          required: true
-          schema:
-            type: integer
-          requestBody:
-            required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - title
-                  - message
-                properties:
-                  title:
-                    type: string
-                    description: Announcement title
-                  message:
-                    type: string
-                    description: Announcement body
-                  is_announcement:
-                    type: boolean
-                    default: true
-                    description: Creates the discussion topic as a course announcement
-          responses:
-            '200':
-              description: Announcement created
-          '201':
-            description: Announcement created
   /api/v1/courses/{course_id}/analytics/activity:
     get:
       operationId: courseActivityAnalytics
