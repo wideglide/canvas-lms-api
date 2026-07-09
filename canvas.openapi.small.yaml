@@ -1,0 +1,161 @@
+openapi: 3.0.0
+
+info:
+  title: Canvas Instructor API
+  version: 1.0.0
+  description: Canvas LMS endpoints optimized for APIM MCP
+
+servers:
+  - url: https://westpoint.beta.instructure.com
+
+paths:
+
+  /api/v1/users/self:
+    get:
+      operationId: getCurrentUser
+      summary: Get Current User
+      responses:
+        '200':
+          description: Current user information
+
+  /api/v1/courses:
+    get:
+      operationId: listCourses
+      summary: List My Courses
+      responses:
+        '200':
+          description: Courses returned
+
+  /api/v1/courses/{course_id}:
+    get:
+      operationId: getCourse
+      summary: Get Course Details
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Course details
+
+  /api/v1/courses/{course_id}/users:
+    get:
+      operationId: listCourseUsers
+      summary: List Course Users
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Course users
+
+  /api/v1/courses/{course_id}/assignments:
+    get:
+      operationId: listAssignments
+      summary: List Assignments
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Course assignments
+
+  /api/v1/courses/{course_id}/assignments/{assignment_id}/submissions:
+    get:
+      operationId: getAssignmentGrades
+      summary: Get Assignment Grades
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: assignment_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Student grades
+
+  /api/v1/courses/{course_id}/enrollments:
+    get:
+      operationId: getCourseGrades
+      summary: Get Overall Course Grades
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Enrollment and grade information
+
+  /api/v1/courses/{course_id}/discussion_topics:
+    get:
+      operationId: listDiscussions
+      summary: List Discussions
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Discussion topics
+
+  /api/v1/announcements:
+    post:
+      operationId: createAnnouncement
+      summary: Create Course Announcement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                message:
+                  type: string
+                context_code:
+                  type: string
+      responses:
+        '201':
+          description: Announcement created
+
+  /api/v1/courses/{course_id}/analytics/activity:
+    get:
+      operationId: courseActivityAnalytics
+      summary: Get Course Activity Analytics
+      parameters:
+        - name: course_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Course analytics
+
+components:
+  securitySchemes:
+    CanvasToken:
+      type: apiKey
+      in: header
+      name: Authorization
+
+security:
+  - CanvasToken: []
