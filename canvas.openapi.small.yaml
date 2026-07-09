@@ -1,15 +1,11 @@
 openapi: 3.0.0
-
 info:
   title: Canvas Instructor API
   version: 1.0.0
   description: Canvas LMS endpoints optimized for APIM MCP
-
 servers:
   - url: https://westpoint.beta.instructure.com
-
 paths:
-
   /api/v1/users/self:
     get:
       operationId: getCurrentUser
@@ -17,7 +13,6 @@ paths:
       responses:
         '200':
           description: Current user information
-
   /api/v1/courses:
     get:
       operationId: listCourses
@@ -25,7 +20,6 @@ paths:
       responses:
         '200':
           description: Courses returned
-
   /api/v1/courses/{course_id}:
     get:
       operationId: getCourse
@@ -39,7 +33,6 @@ paths:
       responses:
         '200':
           description: Course details
-
   /api/v1/courses/{course_id}/users:
     get:
       operationId: listCourseUsers
@@ -65,7 +58,6 @@ paths:
       responses:
         '200':
           description: Course users
-
   /api/v1/courses/{course_id}/assignments:
     get:
       operationId: listAssignments
@@ -76,22 +68,21 @@ paths:
           required: true
           schema:
             type: integer
-      - name: page
-        description: The page number to return. Defaults to 1.
-        required: false
-        in: query
-        schema:
-          type: integer
-      - name: per_page
-        description: The number of items to return per page. Defaults to 10. Maximum is 100.
-        required: false
-        in: query
-        schema:
-          type: integer
-        responses:
-          '200':
-            description: Course assignments
-
+        - name: page
+          description: The page number to return. Defaults to 1.
+          required: false
+          in: query
+          schema:
+            type: integer
+        - name: per_page
+          description: The number of items to return per page. Defaults to 10. Maximum is 100.
+          required: false
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Course assignments
   /api/v1/courses/{course_id}/assignments/{assignment_id}/submissions:
     get:
       operationId: getAssignmentGrades
@@ -110,7 +101,6 @@ paths:
       responses:
         '200':
           description: Student grades
-
   /api/v1/courses/{course_id}/enrollments:
     get:
       operationId: getCourseGrades
@@ -124,7 +114,6 @@ paths:
       responses:
         '200':
           description: Enrollment and grade information
-
   /api/v1/courses/{course_id}/discussion_topics:
     get:
       operationId: listDiscussions
@@ -138,7 +127,6 @@ paths:
       responses:
         '200':
           description: Discussion topics
-
   /api/v1/announcements:
     post:
       operationId: createAnnouncement
@@ -159,7 +147,6 @@ paths:
       responses:
         '201':
           description: Announcement created
-
   /api/v1/courses/{course_id}/discussion_topics:
     post:
       operationId: createAnnouncement
@@ -193,10 +180,8 @@ paths:
           responses:
             '200':
               description: Announcement created
-
           '201':
             description: Announcement created
-
   /api/v1/courses/{course_id}/analytics/activity:
     get:
       operationId: courseActivityAnalytics
@@ -210,13 +195,11 @@ paths:
       responses:
         '200':
           description: Course analytics
-
 components:
   securitySchemes:
     CanvasToken:
       type: apiKey
       in: header
       name: Authorization
-
 security:
   - CanvasToken: []
