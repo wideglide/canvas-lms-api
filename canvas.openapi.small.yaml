@@ -8,12 +8,8 @@ info:
     name: Instructure Canvas API
     url: https://www.instructure.com/canvas
 servers:
-- url: https://{instance}.instructure.com
+- url: https://westpoint.beta.instructure.com
   description: Canvas LMS Instance
-  variables:
-    instance:
-      default: canvas
-      description: Your Canvas instance subdomain
 paths:
   /api/v1/users/self:
     get:
