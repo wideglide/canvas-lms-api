@@ -399,7 +399,7 @@ paths:
     post:
       tags:
       - DiscussionTopics
-      operationId: DiscussionTopics-create_other
+      operationId: createDiscussionTopic
       parameters:
       - name: course_id
         description: Scope response to course_id
@@ -412,8 +412,6 @@ paths:
           description: Create a new discussion topic
       description: Create an new discussion topic for the course or group.
       summary: Create a new discussion topic
-      x-controller: discussion_topics
-      x-action: create
       requestBody:
         description: Request body parameters
         content:
@@ -455,20 +453,6 @@ paths:
                     If a timestamp is given, the topic will be scheduled to lock at the
                     provided timestamp. If the timestamp is in the past, the topic will be
                     locked.
-                podcast_enabled:
-                  type: boolean
-                  description: If true, the topic will have an associated podcast
-                    feed.
-                podcast_has_student_posts:
-                  type: boolean
-                  description: |-
-                    If true, the podcast will include posts from students as well. Implies
-                    podcast_enabled.
-                require_initial_post:
-                  type: boolean
-                  description: |-
-                    If true then a user may not respond to other replies until that user has
-                    made an initial reply. Defaults to false.
                 is_announcement:
                   type: boolean
                   description: |-
@@ -485,14 +469,6 @@ paths:
                     By default, discussions are sorted chronologically by creation date, you
                     can pass the id of another topic to have this one show up after the other
                     when they are listed.
-                group_category_id:
-                  type: integer
-                  description: |-
-                    If present, the topic will become a group discussion assigned
-                    to the group.
-                only_graders_can_rate:
-                  type: boolean
-                  description: If true, only graders will be allowed to rate entries.
                 sort_order:
                   type: string
                   enum:
@@ -500,19 +476,6 @@ paths:
                   - desc
                   description: Default sort order of the discussion. Accepted values
                     are "asc", "desc".
-                sort_order_locked:
-                  type: boolean
-                  description: If true, users cannot choose their prefered sort order
-                expanded:
-                  type: boolean
-                  description: If true, thread will be expanded by default
-                expanded_locked:
-                  type: boolean
-                  description: If true, users cannot choose their prefered thread
-                    expansion setting
-                sort_by_rating:
-                  type: boolean
-                  description: "(DEPRECATED) If true, entries will be sorted by rating."
                 specific_sections:
                   type: string
                   description: |-
@@ -525,26 +488,6 @@ paths:
                   type: boolean
                   description: If is_announcement and lock_comment are true, ‘Allow
                     Participants to Comment’ setting is disabled.
-                assignment:
-                  type: object
-                  properties:
-                    Assignment:
-                      type: string
-                      description: |-
-                        To create an assignment discussion, pass the assignment parameters as a
-                        sub-object. See the {api:AssignmentsApiController#create Create an Assignment API}
-                        for the available parameters. The name parameter will be ignored, as it's
-                        taken from the discussion title. If you want to make a discussion that was
-                        an assignment NOT an assignment, pass set_assignment = false as part of
-                        the assignment object
-                attachment:
-                  type: object
-                  properties:
-                    File:
-                      type: string
-                      description: |-
-                        A multipart/form-data form-field-style attachment.
-                        Attachments larger than 1 kilobyte are subject to quota restrictions.
 tags:
 - name: EnrollmentsApi
   description: API for creating and viewing course enrollments
